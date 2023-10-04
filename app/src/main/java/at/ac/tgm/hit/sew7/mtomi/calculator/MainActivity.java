@@ -1,78 +1,140 @@
 package at.ac.tgm.hit.sew7.mtomi.calculator;
 
+import android.content.SharedPreferences;
 import android.os.Bundle;
-
-import com.google.android.material.snackbar.Snackbar;
-
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.view.View;
-
-import androidx.core.view.WindowCompat;
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
-
-import at.ac.tgm.hit.sew7.mtomi.calculator.databinding.ActivityMainBinding;
-
-import android.view.Menu;
-import android.view.MenuItem;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-    private AppBarConfiguration appBarConfiguration;
-    private ActivityMainBinding binding;
+    private EditText firstNumberEditText;
+    private EditText secondNumberEditText;
+    private EditText resultEditText;
+    private RadioGroup calculationTypeRadioGroup;
+    private SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        firstNumberEditText = findViewById(R.id.firstNumberEditText);
+        secondNumberEditText = findViewById(R.id.secondNumberEditText);
+        resultEditText = findViewById(R.id.resultEditText);
+        calculationTypeRadioGroup = findViewById(R.id.calculationTypeRadioGroup);
 
-        setSupportActionBar(binding.toolbar);
+        // Initialisierung der SharedPreferences
+        sharedPreferences = getSharedPreferences("CalculatorMemory", MODE_PRIVATE);
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+        // Laden der gespeicherten Werte beim Start der App
+        recallMemory();
 
-        binding.fab.setOnClickListener(new View.OnClickListener() {
+        Button calculateButton = findViewById(R.id.calculateButton);
+        calculateButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show();
+            public void onClick(View v) {
+                calculate();
+            }
+        });
+
+        // Button "MS" (Memory Store)
+        Button memoryStoreButton = findViewById(R.id.memoryStoreButton);
+        memoryStoreButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                storeMemory(); // Speichern der aktuellen Werte
+            }
+        });
+
+        // Button "MR" (Memory Recall)
+        Button memoryRecallButton = findViewById(R.id.memoryRecallButton);
+        memoryRecallButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                recallMemory(); // Wiederherstellen der gespeicherten Werte
             }
         });
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
+    private void calculate() {
+        String firstNumberStr = firstNumberEditText.getText().toString();
+        String secondNumberStr = secondNumberEditText.getText().toString();
+
+        if (!firstNumberStr.isEmpty() && !secondNumberStr.isEmpty()) {
+            double firstNumber = Double.parseDouble(firstNumberStr);
+            double secondNumber = Double.parseDouble(secondNumberStr);
+
+            int selectedRadioButtonId = calculationTypeRadioGroup.getCheckedRadioButtonId();
+            RadioButton selectedRadioButton = findViewById(selectedRadioButtonId);
+
+            if (selectedRadioButton != null) {
+                String operator = selectedRadioButton.getText().toString();
+                double result = performCalculation(firstNumber, secondNumber, operator);
+                resultEditText.setText(String.valueOf(result));
+            }
+        }
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+    private double performCalculation(double num1, double num2, String operator) {
+        switch (operator) {
+            case "+":
+                return num1 + num2;
+            case "-":
+                return num1 - num2;
+            case "*":
+                return num1 * num2;
+            case "/":
+                if (num2 != 0) {
+                    return num1 / num2;
+                } else {
+                    return 0;
+                }
+            default:
+                return 0;
+        }
+    }
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+    private void storeMemory() {
+        // Zahl und Operator holen
+        String firstNumber = firstNumberEditText.getText().toString();
+        String secondNumber = secondNumberEditText.getText().toString();
+        int selectedRadioButtonId = calculationTypeRadioGroup.getCheckedRadioButtonId();
+        RadioButton selectedRadioButton = findViewById(selectedRadioButtonId);
+        String operator = selectedRadioButton != null ? selectedRadioButton.getText().toString() : "";
+
+        // Ergebniss holen
+        String result = resultEditText.getText().toString();
+
+        // speichern
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("firstNumber", firstNumber);
+        editor.putString("secondNumber", secondNumber);
+        editor.putString("operator", operator);
+        editor.putString("result", result);
+        editor.apply();
+    }
+
+    private void recallMemory() {
+        // abrufen
+        String savedFirstNumber = sharedPreferences.getString("firstNumber", "");
+        String savedSecondNumber = sharedPreferences.getString("secondNumber", "");
+        String savedOperator = sharedPreferences.getString("operator", "");
+        String savedResult = sharedPreferences.getString("result", "");
+
+        // set
+        firstNumberEditText.setText(savedFirstNumber);
+        secondNumberEditText.setText(savedSecondNumber);
+
+        RadioButton radioButton = findViewById(getResources().getIdentifier(savedOperator, "id", getPackageName()));
+        if (radioButton != null) {
+            radioButton.setChecked(true);
         }
 
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
+        resultEditText.setText(savedResult);
     }
 }
+
